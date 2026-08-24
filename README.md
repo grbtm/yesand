@@ -102,11 +102,17 @@ public, rotating protects future content only — recovering properly means a fr
 
 ## Deployment
 
-GitHub Pages serves this repo as flat static files: no build step, no backend. `.nojekyll` stops
-Pages running a Jekyll build over them; `robots.txt` plus a `noindex` meta keep it out of search
-results.
+Live at **https://grbtm.github.io/yesand/**. GitHub Pages serves this repo as flat static files:
+no build step, no backend. `.nojekyll` stops Pages running a Jekyll build over them; `robots.txt`
+plus a `noindex` meta keep it out of search results.
 
-### Before the first push
+No custom domain, deliberately: `github.io` is on the browsers' HSTS preload list, so the site
+can never be reached over plain HTTP. That matters more than usual here — an attacker who could
+swap `main.js` in transit would get the passphrase — and a Pages custom domain cannot send HSTS
+headers. For the same reason, anyone who can push to this repo can replace `main.js`, so keep 2FA
+on the account and don't add collaborators.
+
+### Before pushing
 
 - [x] Passphrase is the real one, and you have loaded the page and typed it successfully. Git
       keeps every commit forever, so anything pushed under a weak passphrase stays recoverable
@@ -116,42 +122,3 @@ results.
       `content/content.json`.
 - [x] `git status --ignored` lists `content/` and `.cache/` as ignored, and
       `git diff --cached --name-only` shows nothing under `content/`.
-
-### Publish
-
-```
-gh repo create yesand --public --source=. --remote=origin
-git push -u origin main
-```
-
-Then repo → Settings → Pages → deploy from `main`, root.
-
-### Enforce HTTPS — do not skip this
-
-Repo → Settings → Pages → tick **Enforce HTTPS**.
-
-Everything here rests on the visitor receiving an authentic `main.js`. Over plain HTTP, anyone on
-the network path can rewrite it in flight to post the passphrase to their own server and then
-decrypt all of it — the encryption is worth nothing if the code doing the decrypting can be
-swapped. Pages issues the certificate automatically, but the enforcement checkbox is a separate,
-manual step.
-
-By the same logic, anyone who can push to this repo can exfiltrate the content. Keep 2FA on the
-account and don't add collaborators.
-
-### Custom domain (optional)
-
-At the registrar, delete the default parking records, then add:
-
-- apex: four **A** records → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`,
-  `185.199.111.153`
-- optional IPv6: four **AAAA** → `2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153`
-- **CNAME** `www` → `grbtm.github.io`
-
-Verify the domain first under GitHub *account* settings → Pages → Verified domains — that
-prevents someone else claiming it if this repo is ever deleted. Then add it under repo →
-Settings → Pages, which writes the `CNAME` file. Re-check Enforce HTTPS once the new certificate
-issues, which can take up to 24h.
-
-A custom domain changes nothing about privacy: the site stays publicly reachable and the
-passphrase remains the only gate.
