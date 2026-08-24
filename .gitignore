@@ -1,0 +1,13 @@
+# Plaintext content — friends' texts, photos and voice notes.
+# This is the ONLY place the unencrypted material lives. It must never be
+# committed: the published site's security rests on `content.enc.js` and
+# `media/*.enc` being the only copies in the public repo.
+# NOTE: this is not backed up by git — keep your own copy somewhere safe.
+content/
+
+# Build cache: normalized/transcoded derivatives, keyed by source hash.
+# Also plaintext.
+.cache/
+
+node_modules/
+.DS_Store

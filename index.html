@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Log On</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<section id="gate" class="gate">
+  <div class="xp-window">
+    <div class="scanlines" aria-hidden="true"></div>
+    <div class="xp-titlebar">
+      <span class="xp-title-icon" aria-hidden="true"></span>
+      <span class="xp-title">Login DBS-Computerraum-C01</span>
+      <div class="xp-controls" aria-hidden="true">
+        <span class="xp-btn xp-min">_</span>
+        <span class="xp-btn xp-max">&#9633;</span>
+        <span class="xp-btn xp-close">&times;</span>
+      </div>
+    </div>
+    <div class="xp-body">
+      <p class="xp-line">Type your password to continue.</p>
+      <form id="gate-form" autocomplete="off">
+        <label for="pw" class="xp-field-label">Password:</label>
+        <input id="pw" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" />
+        <div class="xp-actions">
+          <button type="submit" class="xp-button">OK</button>
+        </div>
+      </form>
+      <p id="gate-error" class="gate-error" role="alert"></p>
+    </div>
+  </div>
+  <canvas id="ripple-fx" aria-hidden="true"></canvas>
+</section>
+
+<main id="content" hidden></main>
+
+<canvas id="blend-fx" aria-hidden="true"></canvas>
+
+<script src="content.enc.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,722 @@
+:root {
+  --gate-bg: #2f7bde;
+
+  --xp-blue-dark: #0a3fa0;
+  --xp-blue: #1657c9;
+  --xp-blue-light: #4fa3ff;
+  --xp-body-bg: #ece9d8;
+  --xp-body-border: #0831d9;
+  --xp-text: #101010;
+  --xp-close-red: #e81123;
+
+  --main-bg: #100a1f;
+  --main-bg-2: #170f2b;
+  --neon-magenta: #ff2bd6;
+  --neon-cyan: #23e6ff;
+  --neon-violet: #8b5cf6;
+  --text-hi: #f4f0ff;
+  --text-dim: #b9aede;
+
+  --mono: "SFMono-Regular", "Menlo", "Consolas", "Courier New", monospace;
+  --sans: -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+  --xp-font: "Tahoma", "Segoe UI", Verdana, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--main-bg);
+  overflow-x: hidden;
+}
+
+body.unlocked {
+  background: var(--main-bg);
+}
+
+/* ---------- background canvases ---------- */
+
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  display: block;
+}
+
+/* Post-submit only: overlaid glitch/artifact bursts during the blend from
+   gate view into the TRON view (main.js draws into this, only during that
+   window — see runRevealTransition). */
+#blend-fx {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 60;
+  pointer-events: none;
+  display: block;
+}
+
+/* ---------- gate view ---------- */
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: var(--gate-bg);
+  transition: opacity 1.3s ease; /* keep in sync with GATE_FADE_MS in main.js */
+}
+
+.gate.hiding {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* WebGL ripple canvas — sits on top of the (undisturbed) gate background,
+   showing a painted replica of the window refracted by a simulated water
+   surface (see ripple.js). Covers .xp-window while active; main.js hides
+   the real window and shows this instead only for the transition's
+   duration, since the form is already disabled by then. */
+#ripple-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  pointer-events: none;
+  display: none;
+}
+
+#ripple-fx.active {
+  display: block;
+}
+
+/* One-shot "digital malfunction" jolt, triggered the instant the simulation
+   freezes (see runRevealTransition) — a stepped, jittery filter punch
+   rather than a smooth transition, to read as a glitch, not an animation. */
+#ripple-fx.frozen {
+  animation: freeze-glitch 0.5s steps(2, end);
+}
+
+@keyframes freeze-glitch {
+  0% { filter: none; }
+  20% { filter: contrast(1.8) saturate(0) brightness(1.3); }
+  40% { filter: contrast(1.2) hue-rotate(40deg); }
+  60% { filter: contrast(1.6) saturate(0.3) brightness(0.8); }
+  100% { filter: none; }
+}
+
+.xp-window {
+  position: relative;
+  width: min(26rem, 100%);
+  border-radius: 8px 8px 3px 3px;
+  border: 1px solid var(--xp-body-border);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+  overflow: hidden;
+  font-family: var(--xp-font);
+  animation: xp-appear 0.25s ease;
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.05) 0px,
+    rgba(0, 0, 0, 0.05) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+.xp-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 1.9rem;
+  padding: 0 0.3rem 0 0.45rem;
+  background: linear-gradient(180deg, var(--xp-blue-light) 0%, var(--xp-blue) 46%, var(--xp-blue-dark) 100%);
+}
+
+.xp-titlebar::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: 40%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+
+.xp-title-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #fff58a, #f4b400);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+  flex: none;
+}
+
+.xp-title {
+  flex: 1;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.xp-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.xp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.05rem;
+  border-radius: 2px;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: linear-gradient(180deg, #6db3ff, #1657c9);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+}
+
+.xp-btn.xp-close {
+  background: linear-gradient(180deg, #ff8a80, var(--xp-close-red) 55%, #a4070f);
+}
+
+.xp-body {
+  position: relative;
+  background: var(--xp-body-bg);
+  padding: 1.4rem 1.3rem 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.xp-line {
+  margin: 0 0 1.1rem;
+  font-size: 0.85rem;
+  color: var(--xp-text);
+}
+
+.xp-field-label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--xp-text);
+}
+
+#gate-form { display: flex; flex-direction: column; }
+
+#pw {
+  background: #fff;
+  border: 1px solid #7f9db9;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  color: var(--xp-text);
+  font-family: var(--xp-font);
+  font-size: 0.95rem;
+  padding: 0.4rem 0.55rem;
+  outline: none;
+}
+
+#pw:focus {
+  border-color: #3c7fb1;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(60, 127, 177, 0.35);
+}
+
+.xp-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.xp-button {
+  min-width: 5.5rem;
+  padding: 0.4rem 0.9rem;
+  font-family: var(--xp-font);
+  font-size: 0.82rem;
+  color: var(--xp-text);
+  border-radius: 3px;
+  border: 1px solid #716f64;
+  background: linear-gradient(180deg, #fefefe, #ece9d8 45%, #d9d3c0 50%, #ece9d8 100%);
+  cursor: pointer;
+}
+
+.xp-button:hover,
+.xp-button:focus-visible {
+  border-color: #3c7fb1;
+  box-shadow: 0 0 0 1px #3c7fb1 inset;
+}
+
+.xp-button:active {
+  background: linear-gradient(180deg, #d9d3c0, #ece9d8 60%, #fefefe);
+}
+
+.gate-error {
+  min-height: 1.1rem;
+  margin: 0.8rem 0 0;
+  font-size: 0.78rem;
+  color: #a4070f;
+}
+
+.gate-error.shake { animation: shake 0.4s ease; }
+
+@keyframes xp-appear {
+  from { transform: translateY(-8px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* ---------- main collage ---------- */
+
+#content {
+  position: relative;
+  z-index: 5;
+  font-family: var(--sans);
+  color: var(--text-hi);
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+#content.visible { opacity: 1; }
+
+#content[hidden] { display: none; }
+
+.section {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1.5rem;
+  text-align: center;
+}
+
+.hero-title {
+  font-family: var(--mono);
+  font-size: clamp(2.2rem, 8vw, 5rem);
+  margin: 0;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 40px rgba(255, 43, 214, 0.25);
+}
+
+.hero-subtitle {
+  margin-top: 1rem;
+  font-size: clamp(1rem, 2.4vw, 1.3rem);
+  color: var(--text-dim);
+  letter-spacing: 0.03em;
+}
+
+.section-heading {
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  color: var(--neon-cyan);
+  margin: 0 0 1.5rem;
+  letter-spacing: 0.02em;
+}
+
+.gift-body {
+  max-width: 42rem;
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--text-hi);
+  white-space: pre-line;
+}
+
+.message-card {
+  text-align: left;
+  padding: 1.2rem 1.4rem;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(255, 43, 214, 0.08), rgba(35, 230, 255, 0.06));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.message-author {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--neon-magenta);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.04em;
+}
+
+.message-body {
+  margin: 0;
+  color: var(--text-hi);
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.gif-slot {
+  aspect-ratio: 4 / 3;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  text-align: center;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 10px, transparent 10px 20px);
+}
+
+.closing-text {
+  max-width: 36rem;
+  font-family: var(--mono);
+  font-size: clamp(1rem, 2.2vw, 1.3rem);
+  color: var(--text-hi);
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+/* ---------- media: photos, clips, voice notes ---------- */
+
+.photo-frame {
+  margin: 0;
+  border: 1px solid rgba(35, 230, 255, 0.35);
+  border-radius: 6px;
+  background: linear-gradient(160deg, rgba(35, 230, 255, 0.06), rgba(255, 43, 214, 0.05));
+  padding: 0.4rem;
+  box-shadow: 0 0 18px rgba(35, 230, 255, 0.08);
+  overflow: hidden;
+}
+
+.photo-shot {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Placeholder shimmer while the blob is still being fetched and decrypted. */
+.photo-shot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(35, 230, 255, 0.05) 0 8px,
+    rgba(35, 230, 255, 0.11) 8px 16px
+  );
+  animation: media-wait 1.6s linear infinite;
+  transition: opacity 0.4s ease;
+}
+
+.photo-frame.loaded .photo-shot::after { opacity: 0; }
+
+@keyframes media-wait {
+  from { background-position: 0 0; }
+  to { background-position: 32px 0; }
+}
+
+.photo-shot img,
+.photo-shot video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-caption {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--text-dim);
+  padding: 0.55rem 0.3rem 0.15rem;
+  text-align: left;
+}
+
+.photo-frame.failed {
+  border-style: dashed;
+  border-color: rgba(255, 43, 214, 0.5);
+}
+
+.message-media {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.message-media .photo-frame {
+  flex: 1 1 12rem;
+  max-width: 16rem;
+}
+
+.message-media .voice-note {
+  flex: 1 1 100%;
+}
+
+/* ---------- voice note player ---------- */
+
+.voice-note {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid rgba(35, 230, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.voice-play {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 43, 214, 0.55);
+  border-radius: 50%;
+  background: rgba(255, 43, 214, 0.12);
+  color: var(--neon-magenta);
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.voice-play:hover:not(:disabled),
+.voice-play:focus-visible {
+  background: rgba(255, 43, 214, 0.24);
+  box-shadow: 0 0 12px rgba(255, 43, 214, 0.35);
+}
+
+.voice-play:disabled { opacity: 0.5; cursor: progress; }
+
+/* Play glyph: a CSS triangle that swaps to two bars while playing, so there's
+   no icon font or inline SVG to ship. */
+.voice-play::before {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-left: 11px solid currentColor;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+
+.voice-note.playing .voice-play::before {
+  margin-left: 0;
+  width: 11px;
+  height: 13px;
+  border: none;
+  background:
+    linear-gradient(currentColor, currentColor) left / 3.5px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) right / 3.5px 100% no-repeat;
+}
+
+.voice-wave-slot {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  height: 2.2rem;
+}
+
+/* Absolutely positioned, so the used size comes from the slot and never from
+   the canvas's own width/height attributes — see the note in makeVoiceNote. */
+.voice-wave {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.voice-time {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-note.failed {
+  border-color: rgba(255, 43, 214, 0.5);
+  border-style: dashed;
+}
+
+/* ---------- scroll journey ---------- */
+
+/* Acts 2 and 4 need scroll distance rather than content: the horizon has to
+   visibly accelerate before the takeoff reads as a takeoff, and the warp has to
+   build and then hold. Without the extra height they'd both flash past in one
+   viewport. Act boundaries are measured from these sections at runtime, so
+   changing these numbers retimes the visuals automatically. */
+/* Act 1 is a single section, so it needs explicit height — otherwise the grid
+   is gone almost as soon as it appears. */
+.section[data-act="1"] { min-height: 140vh; }
+
+.section[data-act="4"] {
+  min-height: 185vh;
+  justify-content: flex-start;
+  padding-top: 60vh;
+}
+
+/* ---------- one item per screen ---------- */
+
+/* Just a heading: it introduces the run of full-screen sections under it
+   without spending a whole empty viewport doing so. */
+.section-lead {
+  min-height: 42vh;
+  justify-content: flex-end;
+  padding-bottom: 1rem;
+}
+
+.section > .message-card {
+  width: min(46rem, 92vw);
+}
+
+/* Width is capped inline from the photo's real aspect ratio (see makeFrame),
+   so this only has to let it grow into that cap. */
+.photo-solo {
+  width: 100%;
+}
+
+.photo-solo .photo-shot {
+  max-height: 74vh;
+}
+
+.section > .gif-slot {
+  width: min(30rem, 92vw);
+}
+
+/* ---------- finale: the GIF wall, over the warp ---------- */
+
+/* Full-bleed: wider than the section's content box, which the centring in
+   .section takes care of, and body already clips overflow-x. */
+.finale-wall {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  margin-top: 5rem;
+}
+
+/* Position, width and tilt all come from inline styles set in renderContent. */
+.finale-wall .photo-frame {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(var(--tilt, 0deg));
+  border-color: rgba(226, 244, 255, 0.45);
+  box-shadow: 0 0 28px rgba(35, 230, 255, 0.25);
+}
+
+.finale-wall .photo-shot { max-height: none; }
+
+/* ---------- XP dialogs (the door policy) ---------- */
+
+.xp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  /* Just enough to read as "the window behind is inactive" — XP itself dimmed
+     nothing, but without this the dialog floats ambiguously over the gate. */
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.xp-dialog {
+  width: min(31rem, 100%);
+}
+
+.xp-dialog .xp-line {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Two buttons, XP order: gap between them, both right-aligned. */
+.xp-dialog .xp-actions {
+  gap: 0.55rem;
+  margin-top: 1.3rem;
+}
+
+.xp-dialog .xp-btn {
+  font-family: var(--xp-font);
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The classic red error badge instead of the yellow document icon. */
+.xp-dialog-error .xp-title-icon {
+  border-radius: 50%;
+  background: linear-gradient(160deg, #ff8a80, #e81123 55%, #a4070f);
+}
+
+/* ---------- long-form headings ---------- */
+
+/* A title that's a whole sentence rather than a shout can't use the display
+   size — it has to wrap and stay readable. */
+.hero-title.long {
+  font-size: clamp(1.5rem, 4.6vw, 2.9rem);
+  max-width: 24ch;
+  margin-inline: auto;
+  line-height: 1.18;
+}
+
+.section-heading.long {
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  max-width: 44rem;
+  margin-inline: auto;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+.section-lead:has(.section-heading.long) {
+  min-height: 55vh;
+  justify-content: center;
+}
+
+/* ---------- links inside prose ---------- */
+
+#content a {
+  color: var(--neon-cyan);
+  text-decoration-color: rgba(35, 230, 255, 0.45);
+  text-underline-offset: 0.18em;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+#content a:hover,
+#content a:focus-visible {
+  color: var(--neon-magenta);
+  text-decoration-color: var(--neon-magenta);
+}
